@@ -5,10 +5,7 @@ package-lock.json
 # Ortam/sifre dosyalari
 .env
 
-# Uretilen ciktilar
+# Uretilen ciktilar (QR'lar panelden/script ile yeniden uretilir)
 sunucu/cikti-qr/
-tasarim/*.png
 
-# Isletim sistemi
-.DS_Store
-Thumbs.db
+# Isle
