@@ -132,7 +132,7 @@
   <div class="card">
     <h3>Kayıtlı işletmeler (<span id="sayi">0</span>)</h3>
     <table>
-      <thead><tr><th>İşletme</th><th>Slug</th><th>Test</th><th>QR</th><th></th></tr></thead>
+      <thead><tr><th>İşletme</th><th>Slug</th><th>Tam URL</th><th>Test</th><th>QR</th><th></th></tr></thead>
       <tbody id="liste"></tbody>
     </table>
   </div>
@@ -211,12 +211,17 @@ async function listele(){
     SON_LISTE = d.restoranlar;
     const tb = $("liste"); tb.innerHTML="";
     $("sayi").textContent = d.restoranlar.length;
-    if(!d.restoranlar.length){ tb.innerHTML='<tr><td colspan="5" class="empty">Henüz kayıt yok. Yukarıdan ekle.</td></tr>'; return; }
+    if(!d.restoranlar.length){ tb.innerHTML='<tr><td colspan="6" class="empty">Henüz kayıt yok. Yukarıdan ekle.</td></tr>'; return; }
     for(const r of d.restoranlar){
+      const tamUrl = location.origin + "/r/" + r.slug;
       const tr=document.createElement("tr");
       tr.innerHTML=`
         <td class="isim">${esc(r.isletme||"")}</td>
         <td><code>${esc(r.slug)}</code></td>
+        <td><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;word-break:break-all">${esc(tamUrl)}</span>
+          <button class="btn-ghost btn-sm" onclick="kopyala('${esc(tamUrl)}')">Kopyala</button>
+        </div></td>
         <td><a href="/r/${encodeURIComponent(r.slug)}" target="_blank">aç ↗</a></td>
         <td><button class="btn-ghost btn-sm" onclick="qrIndir('${esc(r.slug)}')">QR</button></td>
         <td><div class="rowbtns">
@@ -281,6 +286,7 @@ async function qrIndir(slug){
 
 /* ---------- yardımcı ---------- */
 function mesaj(t, tip){ const m=$("msg"); m.textContent=t; m.className="msg "+(tip||""); if(tip) setTimeout(()=>m.className="msg",4000); }
+function kopyala(t){ navigator.clipboard.writeText(t).then(()=>mesaj("Kopyalandı: "+t,"ok"), ()=>mesaj("Kopyalanamadı, elle seç.","err")); }
 function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
 /* ---------- açılış ---------- */
