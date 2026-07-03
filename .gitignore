@@ -1,6 +1,6 @@
-# Bagimliliklar (npm install ile yeniden olusur - repoya konmaz)
+# Bagimliliklar (node_modules npm install ile yeniden olusur - repoya konmaz)
+# package-lock.json BILEREK repoya eklenir (reprodüktif/guvenli deploy icin)
 node_modules/
-package-lock.json
 
 # Ortam/sifre dosyalari
 .env
@@ -8,4 +8,5 @@ package-lock.json
 # Uretilen ciktilar (QR'lar panelden/script ile yeniden uretilir)
 sunucu/cikti-qr/
 
-# Isle
+# Otomatik veri yedekleri (kalici disk uzerinde tutulur, repoya konmaz)
+sunucu/yedekler/

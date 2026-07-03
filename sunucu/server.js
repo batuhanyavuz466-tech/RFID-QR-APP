@@ -13,7 +13,10 @@ const QRCode = require("qrcode");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, "restoranlar.json");
+const DATA_DIR = process.env.DATA_DIR || __dirname; // kalici disk mount noktasi (Render vb.) buraya verilir
+const DATA_FILE = path.join(DATA_DIR, "restoranlar.json");
+const BACKUP_DIR = path.join(DATA_DIR, "yedekler");
+const BACKUP_ADET = 30; // tutulacak son yedek sayisi
 const PUBLIC_BASE = (process.env.BASE_URL || "").replace(/\/+$/, ""); // QR icin genel alan adi (bossa istekten turetilir)
 const ADMIN_KEY = process.env.ADMIN_KEY || "admin123";               // panel sifresi (canliya almadan MUTLAKA degistir)
 
@@ -23,6 +26,19 @@ app.use(express.json());
 
 // ---------------- Veri yardimcilari ----------------
 let cache = { mtimeMs: 0, meta: {}, liste: [], map: new Map() };
+
+// DATA_DIR ayri bir kalici disk ise (Render vb.) ve orada veri dosyasi henuz
+// yoksa, repo ile gelen ornek dosyayi tohum (seed) olarak bir kere kopyala.
+function tohumla() {
+  if (DATA_DIR === __dirname) return;
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (fs.existsSync(DATA_FILE)) return;
+  const tohumDosya = path.join(__dirname, "restoranlar.json");
+  if (fs.existsSync(tohumDosya)) {
+    fs.copyFileSync(tohumDosya, DATA_FILE);
+    console.log(`[veri] ilk kurulum: ${tohumDosya} -> ${DATA_FILE} tohumlandi`);
+  }
+}
 
 function veriOku() {
   const stat = fs.statSync(DATA_FILE);
@@ -36,6 +52,21 @@ function veriOku() {
   console.log(`[veri] ${map.size} isletme yuklendi (${new Date().toISOString()})`);
   return cache;
 }
+
+// Yazmadan once mevcut dosyanin zaman damgali bir kopyasini yedekler klasorune alir.
+function yedekle() {
+  if (!fs.existsSync(DATA_FILE)) return;
+  if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  const damga = new Date().toISOString().replace(/[:.]/g, "-");
+  fs.copyFileSync(DATA_FILE, path.join(BACKUP_DIR, `restoranlar-${damga}.json`));
+
+  const dosyalar = fs
+    .readdirSync(BACKUP_DIR)
+    .filter((f) => f.startsWith("restoranlar-") && f.endsWith(".json"))
+    .sort();
+  for (const f of dosyalar.slice(0, -BACKUP_ADET)) fs.unlinkSync(path.join(BACKUP_DIR, f));
+}
+
 function veriYaz(liste) {
   const { meta } = cache;
   const obj = {
@@ -43,9 +74,16 @@ function veriYaz(liste) {
       "Her isletme icin: isletme + slug + url. url = Google yorum yazma linki. Panelden (/admin) duzenlenir.",
     restoranlar: liste,
   };
-  fs.writeFileSync(DATA_FILE, JSON.stringify(obj, null, 2), "utf8");
+  yedekle();
+  // Atomic yazim: once .tmp dosyasina yaz, sonra yerine tasi (rename atomiktir).
+  // Boylece yazma sirasinda sunucu coker/yeniden baslarsa dosya yarim kalip bozulmaz.
+  const gecici = `${DATA_FILE}.tmp`;
+  fs.writeFileSync(gecici, JSON.stringify(obj, null, 2), "utf8");
+  fs.renameSync(gecici, DATA_FILE);
   cache.mtimeMs = 0; // bir sonraki okumada tazele
 }
+
+tohumla();
 try { veriOku(); } catch (e) { console.error("[veri] okunamadi:", e.message); }
 
 function slugla(s) {
