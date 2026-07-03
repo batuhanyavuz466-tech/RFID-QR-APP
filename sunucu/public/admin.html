@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Yönetim Paneli — Masa Standı</title>
+<style>
+  :root{ --navy:#0E1726; --navy2:#16223A; --gold:#C9A24B; --goldl:#E7CE93; --muted:#9FB0C9; --line:#26344f; --ok:#2ecc71; --err:#e74c3c; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,Segoe UI,Arial,sans-serif;background:var(--navy);color:#fff;}
+  header{background:var(--navy2);border-bottom:1px solid var(--line);padding:16px 20px;}
+  header h1{margin:0;font-size:18px}
+  header h1 span{color:var(--gold)}
+  .wrap{max-width:900px;margin:0 auto;padding:20px;}
+  .card{background:var(--navy2);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px;}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px;}
+  input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:#0b1220;color:#fff;font-size:14px;}
+  input:focus{outline:none;border-color:var(--gold)}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .row>div{flex:1;min-width:200px}
+  button{cursor:pointer;border:none;border-radius:8px;padding:10px 16px;font-weight:700;font-size:14px}
+  .btn-gold{background:linear-gradient(90deg,var(--gold),var(--goldl));color:#1a1a1a}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+  .btn-sm{padding:6px 10px;font-size:12px}
+  .btn-del{background:transparent;border:1px solid #5a2b2b;color:#ff8888}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  td a{color:var(--goldl);text-decoration:none}
+  .hint{font-size:12px;color:var(--muted);line-height:1.5}
+  .msg{padding:10px 12px;border-radius:8px;margin-top:10px;font-size:13px;display:none}
+  .msg.ok{background:rgba(46,204,113,.12);border:1px solid var(--ok);color:#a6f0c6;display:block}
+  .msg.err{background:rgba(231,76,60,.12);border:1px solid var(--err);color:#ffb3ab;display:block}
+  .keybar{display:flex;gap:10px;align-items:flex-end}
+  .keybar>div{flex:1}
+  code{background:#0b1220;padding:2px 6px;border-radius:4px;color:var(--goldl)}
+  .muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<header><div class="wrap" style="padding:0"><h1>Masa Standı — <span>Yönetim Paneli</span></h1></div></header>
+<div class="wrap">
+
+  <!-- Yönetici anahtarı -->
+  <div class="card">
+    <div class="keybar">
+      <div>
+        <label>Yönetici anahtarı</label>
+        <input id="key" type="password" placeholder="admin123 (varsayılan)" />
+      </div>
+      <button class="btn-ghost" onclick="anahtarKaydet()">Kaydet</button>
+    </div>
+    <div class="hint" style="margin-top:8px">Anahtar tarayıcında saklanır. Sunucuda <code>ADMIN_KEY</code> ile değiştirebilirsin.</div>
+  </div>
+
+  <!-- Yeni / güncelle -->
+  <div class="card">
+    <h3 style="margin:0 0 4px">İşletme ekle / güncelle</h3>
+    <div class="hint">Aynı slug varsa üzerine yazılır (güncelleme). Slug'ı boş bırakırsan işletme adından üretilir.</div>
+    <div class="row">
+      <div>
+        <label>İşletme adı</label>
+        <input id="isletme" placeholder="Kebapçı Mehmet" oninput="slugOner()" />
+      </div>
+      <div>
+        <label>Slug (QR/NFC linkinde geçer: /r/…)</label>
+        <input id="slug" placeholder="kebapci-mehmet" />
+      </div>
+    </div>
+    <label>Google yorum linki (url)</label>
+    <input id="url" placeholder="https://search.google.com/local/writereview?placeid=..." />
+    <div class="hint" style="margin:6px 0 12px">
+      Linki nereden bulurum? Google İşletme Profili'ndeki "yorum iste" linki, ya da Place ID'yi
+      <code>https://search.google.com/local/writereview?placeid=PLACE_ID</code> kalıbına yapıştır.
+    </div>
+    <button class="btn-gold" id="kaydetBtn" onclick="kaydet()">Ekle</button>
+    <button class="btn-ghost" id="vazgecBtn" onclick="vazgec()" style="display:none">Vazgeç</button>
+    <div id="msg" class="msg"></div>
+  </div>
+
+  <!-- Liste -->
+  <div class="card">
+    <h3 style="margin:0 0 10px">Kayıtlı işletmeler (<span id="sayi">0</span>)</h3>
+    <table>
+      <thead><tr><th>İşletme</th><th>Slug</th><th>Test</th><th>QR</th><th></th></tr></thead>
+      <tbody id="liste"><tr><td colspan="5" class="muted">Anahtarı girip listele…</td></tr></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let SON_LISTE = [];
+function key(){ return localStorage.getItem("adminKey") || ""; }
+function anahtarKaydet(){ localStorage.setItem("adminKey", $("key").value.trim()); mesaj("Anahtar kaydedildi.","ok"); listele(); }
+function mesaj(t, tip){ const m=$("msg"); m.textContent=t; m.className="msg "+(tip||""); if(tip){ setTimeout(()=>m.className="msg",4000);} }
+
+function slugla(s){
+  const tr={ç:"c",ğ:"g",ı:"i",ö:"o",ş:"s",ü:"u",İ:"i"};
+  return (s||"").replace(/[çğıöşüİ]/g,c=>tr[c]||c).toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,60);
+}
+function slugOner(){ if(!$("slug").dataset.dokunuldu){ $("slug").value = slugla($("isletme").value); } }
+$("slug")?.addEventListener("input", e=>{ e.target.dataset.dokunuldu="1"; });
+
+async function api(yol, opt={}){
+  opt.headers = Object.assign({ "Content-Type":"application/json", "x-admin-key": key() }, opt.headers||{});
+  const r = await fetch(yol, opt);
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.hata || ("Hata "+r.status));
+  return d;
+}
+
+async function listele(){
+  try{
+    const d = await api("/api/restoranlar");
+    SON_LISTE = d.restoranlar;
+    const tb = $("liste"); tb.innerHTML="";
+    $("sayi").textContent = d.restoranlar.length;
+    if(!d.restoranlar.length){ tb.innerHTML='<tr><td colspan="5" class="muted">Henüz kayıt yok.</td></tr>'; return; }
+    for(const r of d.restoranlar){
+      const tr=document.createElement("tr");
+      tr.innerHTML=`
+        <td>${esc(r.isletme||"")}</td>
+        <td><code>${esc(r.slug)}</code></td>
+        <td><a href="/r/${encodeURIComponent(r.slug)}" target="_blank">/r/${esc(r.slug)} ↗</a></td>
+        <td><button class="btn-ghost btn-sm" onclick="qrIndir('${esc(r.slug)}')">QR indir</button></td>
+        <td>
+          <button class="btn-ghost btn-sm" onclick="duzenle('${esc(r.slug)}')">Düzenle</button>
+          <button class="btn-del btn-sm" onclick="sil('${esc(r.slug)}')">Sil</button>
+        </td>`;
+      tb.appendChild(tr);
+    }
+  }catch(e){ mesaj(e.message,"err"); }
+}
+
+async function kaydet(){
+  try{
+    const body={ isletme:$("isletme").value, slug:$("slug").value, url:$("url").value };
+    const d = await api("/api/restoranlar",{ method:"POST", body:JSON.stringify(body) });
+    mesaj("Kaydedildi: "+d.kayit.slug,"ok");
+    formTemizle();
+    listele();
+  }catch(e){ mesaj(e.message,"err"); }
+}
+
+// Düzenle: satırdaki kaydı forma doldur, slug'ı kilitle (isim + url güncellenir)
+function duzenle(slug){
+  const r = SON_LISTE.find(x => x.slug === slug);
+  if(!r) return;
+  $("isletme").value = r.isletme || "";
+  $("slug").value = r.slug;
+  $("url").value = r.url || "";
+  $("slug").readOnly = true;
+  $("slug").dataset.dokunuldu = "1";
+  $("kaydetBtn").textContent = "Güncelle";
+  $("vazgecBtn").style.display = "inline-block";
+  $("isletme").focus();
+  window.scrollTo({ top:0, behavior:"smooth" });
+}
+
+function vazgec(){ formTemizle(); }
+
+function formTemizle(){
+  $("isletme").value=""; $("slug").value=""; $("url").value="";
+  $("slug").readOnly=false; $("slug").dataset.dokunuldu="";
+  $("kaydetBtn").textContent="Ekle";
+  $("vazgecBtn").style.display="none";
+}
+
+async function sil(slug){
+  if(!confirm(slug+" silinsin mi?")) return;
+  try{ await api("/api/restoranlar/"+encodeURIComponent(slug),{ method:"DELETE" }); mesaj("Silindi: "+slug,"ok"); listele(); }
+  catch(e){ mesaj(e.message,"err"); }
+}
+
+async function qrIndir(slug){
+  // Yetkili istekle blob indir
+  try{
+    const r = await fetch("/api/qr/"+encodeURIComponent(slug)+".png",{ headers:{ "x-admin-key": key() }});
+    if(!r.ok){ throw new Error("QR alınamadı ("+r.status+")"); }
+    const blob = await r.blob();
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=slug+".png"; a.click();
+    URL.revokeObjectURL(a.href);
+  }catch(e){ mesaj(e.message,"err"); }
+}
+
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+// açılışta
+$("key").value = key();
+if(key()) listele();
+</script>
+</body>
+</html>

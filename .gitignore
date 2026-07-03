@@ -1,0 +1,14 @@
+# Bagimliliklar (npm install ile yeniden olusur - repoya konmaz)
+node_modules/
+package-lock.json
+
+# Ortam/sifre dosyalari
+.env
+
+# Uretilen ciktilar
+sunucu/cikti-qr/
+tasarim/*.png
+
+# Isletim sistemi
+.DS_Store
+Thumbs.db

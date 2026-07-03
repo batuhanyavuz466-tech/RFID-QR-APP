@@ -1,0 +1,16 @@
+{
+  "name": "deger-yonlendirme",
+  "version": "1.0.0",
+  "description": "Restoran masa standi NFC/QR yonlendirme sunucusu (slug -> Google yorum linki 302)",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "qr": "node scripts/qr-uret.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "qrcode": "^1.5.4"
+  }
+}

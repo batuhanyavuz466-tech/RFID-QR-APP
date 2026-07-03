@@ -1,0 +1,10 @@
+{
+  "_aciklama": "Her isletme icin: isletme + slug + url. url = Google yorum yazma linki. Panelden (/admin) duzenlenir.",
+  "restoranlar": [
+    {
+      "slug": "panama-incirliova",
+      "isletme": "Panama - İncirliovaa",
+      "url": "https://search.google.com/local/writereview?placeid=ChIJiWSfj6MruRQRcjXP4hCT7jA"
+    }
+  ]
+}
