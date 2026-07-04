@@ -10,19 +10,21 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const QRCode = require("qrcode");
+const { stantSvg } = require("./tasarim");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = process.env.DATA_DIR || __dirname; // kalici disk mount noktasi (Render vb.) buraya verilir
 const DATA_FILE = path.join(DATA_DIR, "restoranlar.json");
 const BACKUP_DIR = path.join(DATA_DIR, "yedekler");
+const LOGO_DIR = path.join(DATA_DIR, "logolar");
 const BACKUP_ADET = 30; // tutulacak son yedek sayisi
 const PUBLIC_BASE = (process.env.BASE_URL || "").replace(/\/+$/, ""); // QR icin genel alan adi (bossa istekten turetilir)
 const ADMIN_KEY = process.env.ADMIN_KEY || "admin123";               // panel sifresi (canliya almadan MUTLAKA degistir)
 
 app.disable("x-powered-by");
 app.set("trust proxy", true);
-app.use(express.json());
+app.use(express.json({ limit: "2mb" })); // logo (base64) tasiyabilsin
 
 // ---------------- Veri yardimcilari ----------------
 let cache = { mtimeMs: 0, meta: {}, liste: [], map: new Map() };
@@ -140,8 +142,27 @@ app.post("/api/restoranlar", yetki, (req, res) => {
   if (!/^https?:\/\//i.test(url)) return res.status(400).json({ hata: "url http(s):// ile baslamali." });
 
   const { liste } = veriOku();
+  const eski = liste.find((r) => r.slug === slug);
   const yeni = liste.filter((r) => r.slug !== slug);
   const kayit = { slug, isletme, url };
+  if (eski && eski.logo) kayit.logo = eski.logo; // guncellemede mevcut logoyu koru
+
+  if (req.body.logoSil) {
+    if (kayit.logo) {
+      try { fs.unlinkSync(path.join(LOGO_DIR, kayit.logo)); } catch {}
+      delete kayit.logo;
+    }
+  } else if (req.body.logo) {
+    const es = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body.logo));
+    if (!es) return res.status(400).json({ hata: "Logo PNG veya JPG olmali." });
+    const buf = Buffer.from(es[2], "base64");
+    if (buf.length > 1.5 * 1024 * 1024) return res.status(400).json({ hata: "Logo 1.5 MB'den kucuk olmali." });
+    if (!fs.existsSync(LOGO_DIR)) fs.mkdirSync(LOGO_DIR, { recursive: true });
+    if (kayit.logo) { try { fs.unlinkSync(path.join(LOGO_DIR, kayit.logo)); } catch {} } // uzanti degisirse eski dosya kalmasin
+    kayit.logo = `${slug}.${es[1] === "png" ? "png" : "jpg"}`;
+    fs.writeFileSync(path.join(LOGO_DIR, kayit.logo), buf);
+  }
+
   yeni.push(kayit);
   veriYaz(yeni);
   res.json({ ok: true, kayit });
@@ -150,8 +171,10 @@ app.post("/api/restoranlar", yetki, (req, res) => {
 app.delete("/api/restoranlar/:slug", yetki, (req, res) => {
   const slug = String(req.params.slug || "").toLowerCase();
   const { liste } = veriOku();
+  const silinen = liste.find((r) => r.slug === slug);
   const yeni = liste.filter((r) => r.slug !== slug);
   if (yeni.length === liste.length) return res.status(404).json({ hata: "Bulunamadi." });
+  if (silinen && silinen.logo) { try { fs.unlinkSync(path.join(LOGO_DIR, silinen.logo)); } catch {} }
   veriYaz(yeni);
   res.json({ ok: true });
 });
@@ -168,6 +191,24 @@ app.get("/api/qr/:slug.png", yetki, async (req, res) => {
       color: { dark: "#000000", light: "#FFFFFF" },
     });
     res.type("png").set("Content-Disposition", `attachment; filename="${slug}.png"`).send(buf);
+  } catch (e) {
+    res.status(500).json({ hata: e.message });
+  }
+});
+
+// Baskiya hazir masa standi (SVG) - panelden indirilir. Isletme adi + QR dinamik.
+app.get("/api/tasarim/:slug.svg", yetki, async (req, res) => {
+  const slug = String(req.params.slug || "").toLowerCase();
+  const { map } = veriOku();
+  const r = map.get(slug);
+  if (!r) return res.status(404).json({ hata: "Bulunamadi." });
+  try {
+    const logoYolu = r.logo ? path.join(LOGO_DIR, r.logo) : null;
+    const svg = await stantSvg(r.isletme || r.slug, `${tabanUrl(req)}/r/${r.slug}`, logoYolu);
+    res
+      .type("image/svg+xml")
+      .set("Content-Disposition", `attachment; filename="${r.slug}-stant.svg"`)
+      .send(svg);
   } catch (e) {
     res.status(500).json({ hata: e.message });
   }

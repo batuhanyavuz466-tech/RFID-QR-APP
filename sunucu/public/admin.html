@@ -121,6 +121,12 @@
     <label>Google yorum linki (url)</label>
     <input id="url" placeholder="https://search.google.com/local/writereview?placeid=..." />
     <div class="hint" style="margin-top:6px">Place ID'yi bul → <code>https://search.google.com/local/writereview?placeid=PLACE_ID</code> kalıbına yapıştır.</div>
+    <label>Logo (opsiyonel — PNG/JPG, tercihen şeffaf zeminli PNG, en fazla 1.5 MB)</label>
+    <input id="logoDosya" type="file" accept="image/png,image/jpeg" />
+    <div class="hint" id="logoDurum" style="margin-top:6px"></div>
+    <label id="logoSilSatir" style="display:none;font-weight:500">
+      <input type="checkbox" id="logoSil" style="width:auto;vertical-align:middle" /> Mevcut logoyu kaldır
+    </label>
     <div class="actions">
       <button class="btn-brand" id="kaydetBtn" onclick="kaydet()">Ekle</button>
       <button class="btn-ghost" id="vazgecBtn" onclick="vazgec()" style="display:none">Vazgeç</button>
@@ -132,7 +138,7 @@
   <div class="card">
     <h3>Kayıtlı işletmeler (<span id="sayi">0</span>)</h3>
     <table>
-      <thead><tr><th>İşletme</th><th>Slug</th><th>Tam URL</th><th>Test</th><th>QR</th><th></th></tr></thead>
+      <thead><tr><th>İşletme</th><th>Slug</th><th>Tam URL</th><th>Test</th><th>İndir</th><th></th></tr></thead>
       <tbody id="liste"></tbody>
     </table>
   </div>
@@ -223,7 +229,10 @@ async function listele(){
           <button class="btn-ghost btn-sm" onclick="kopyala('${esc(tamUrl)}')">Kopyala</button>
         </div></td>
         <td><a href="/r/${encodeURIComponent(r.slug)}" target="_blank">aç ↗</a></td>
-        <td><button class="btn-ghost btn-sm" onclick="qrIndir('${esc(r.slug)}')">QR</button></td>
+        <td><div style="display:flex;gap:6px">
+          <button class="btn-ghost btn-sm" onclick="qrIndir('${esc(r.slug)}')">QR</button>
+          <button class="btn-ghost btn-sm" onclick="stantIndir('${esc(r.slug)}')">Stant</button>
+        </div></td>
         <td><div class="rowbtns">
           <button class="btn-ghost btn-sm" onclick="duzenle('${esc(r.slug)}')">Düzenle</button>
           <button class="btn-danger btn-sm" onclick="silSor('${esc(r.slug)}','${esc(r.isletme||r.slug)}')">Sil</button>
@@ -234,9 +243,22 @@ async function listele(){
 }
 
 /* ---------- Ekle / güncelle ---------- */
+function dosyaOku(f){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result); r.onerror=()=>rej(new Error("Dosya okunamadı."));
+    r.readAsDataURL(f);
+  });
+}
 async function kaydet(){
   try{
     const body={ isletme:$("isletme").value, slug:$("slug").value, url:$("url").value };
+    const f = $("logoDosya").files[0];
+    if(f){
+      if(f.size > 1.5*1024*1024) throw new Error("Logo 1.5 MB'den küçük olmalı.");
+      body.logo = await dosyaOku(f);
+    }
+    if($("logoSil").checked) body.logoSil = true;
     const d = await api("/api/restoranlar",{ method:"POST", body:JSON.stringify(body) });
     mesaj("Kaydedildi: "+d.kayit.slug,"ok");
     formTemizle(); listele();
@@ -245,6 +267,8 @@ async function kaydet(){
 function duzenle(slug){
   const r = SON_LISTE.find(x => x.slug === slug); if(!r) return;
   $("isletme").value = r.isletme || ""; $("slug").value = r.slug; $("url").value = r.url || "";
+  $("logoDurum").textContent = r.logo ? "Bu işletmenin kayıtlı logosu var. Yeni dosya seçersen değişir." : "";
+  $("logoSilSatir").style.display = r.logo ? "block" : "none";
   $("slug").readOnly = true; $("slug").dataset.dokunuldu = "1";
   $("formBaslik").textContent = "İşletmeyi düzenle";
   $("kaydetBtn").textContent = "Güncelle";
@@ -254,6 +278,8 @@ function duzenle(slug){
 function vazgec(){ formTemizle(); }
 function formTemizle(){
   $("isletme").value=""; $("slug").value=""; $("url").value="";
+  $("logoDosya").value=""; $("logoDurum").textContent="";
+  $("logoSil").checked=false; $("logoSilSatir").style.display="none";
   $("slug").readOnly=false; $("slug").dataset.dokunuldu="";
   $("formBaslik").textContent="İşletme ekle";
   $("kaydetBtn").textContent="Ekle"; $("vazgecBtn").style.display="none";
@@ -273,16 +299,18 @@ async function silOnayla(slug){
   }catch(e){ modalKapat(); if(e.message!=="401") mesaj(e.message,"err"); }
 }
 
-/* ---------- QR indir ---------- */
-async function qrIndir(slug){
+/* ---------- QR / stant indir ---------- */
+async function dosyaIndir(yol, dosyaAdi){
   try{
-    const r = await fetch("/api/qr/"+encodeURIComponent(slug)+".png",{ headers:{ "x-admin-key": key() }});
+    const r = await fetch(yol,{ headers:{ "x-admin-key": key() }});
     if(r.status===401){ logout("Oturum geçersiz, tekrar giriş yap."); return; }
-    if(!r.ok) throw new Error("QR alınamadı ("+r.status+")");
+    if(!r.ok) throw new Error("Dosya alınamadı ("+r.status+")");
     const blob = await r.blob();
-    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=slug+".png"; a.click(); URL.revokeObjectURL(a.href);
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=dosyaAdi; a.click(); URL.revokeObjectURL(a.href);
   }catch(e){ mesaj(e.message,"err"); }
 }
+function qrIndir(slug){ dosyaIndir("/api/qr/"+encodeURIComponent(slug)+".png", slug+".png"); }
+function stantIndir(slug){ dosyaIndir("/api/tasarim/"+encodeURIComponent(slug)+".svg", slug+"-stant.svg"); }
 
 /* ---------- yardımcı ---------- */
 function mesaj(t, tip){ const m=$("msg"); m.textContent=t; m.className="msg "+(tip||""); if(tip) setTimeout(()=>m.className="msg",4000); }
