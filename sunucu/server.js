@@ -10,7 +10,7 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const QRCode = require("qrcode");
-const { stantSvg } = require("./tasarim");
+const { stantSvg, SABLON_ADLARI } = require("./tasarim");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -196,18 +196,21 @@ app.get("/api/qr/:slug.png", yetki, async (req, res) => {
   }
 });
 
-// Baskiya hazir masa standi (SVG) - panelden indirilir. Isletme adi + QR dinamik.
+// Baskiya hazir masa standi (SVG) - panelden indirilir.
+// Isletme adi + logo + QR dinamik. ?sablon=dik|yatay (varsayilan dik).
 app.get("/api/tasarim/:slug.svg", yetki, async (req, res) => {
   const slug = String(req.params.slug || "").toLowerCase();
+  const sablon = String(req.query.sablon || "dik");
+  if (!SABLON_ADLARI.includes(sablon)) return res.status(400).json({ hata: "Gecersiz sablon. Secenekler: " + SABLON_ADLARI.join(", ") });
   const { map } = veriOku();
   const r = map.get(slug);
   if (!r) return res.status(404).json({ hata: "Bulunamadi." });
   try {
     const logoYolu = r.logo ? path.join(LOGO_DIR, r.logo) : null;
-    const svg = await stantSvg(r.isletme || r.slug, `${tabanUrl(req)}/r/${r.slug}`, logoYolu);
+    const svg = await stantSvg(r.isletme || r.slug, `${tabanUrl(req)}/r/${r.slug}`, logoYolu, sablon);
     res
       .type("image/svg+xml")
-      .set("Content-Disposition", `attachment; filename="${r.slug}-stant.svg"`)
+      .set("Content-Disposition", `attachment; filename="${r.slug}-stant-${sablon}.svg"`)
       .send(svg);
   } catch (e) {
     res.status(500).json({ hata: e.message });

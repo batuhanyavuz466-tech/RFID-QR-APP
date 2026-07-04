@@ -2,8 +2,8 @@
 //  QR Uretici
 //  restoranlar.json'daki her isletme icin QR uretir.
 //  QR icerigi: <BASE_URL>/r/<slug>  (ham Google linki DEGIL!)
-//  Cikti: cikti-qr/<slug>.png, <slug>.svg ve <slug>-stant.svg
-//  (-stant.svg = baskiya hazir masa standi on yuzu)
+//  Cikti: cikti-qr/<slug>.png, <slug>.svg ve <slug>-stant-<sablon>.svg
+//  (stant = baskiya hazir masa standi; sablonlar: dik, yatay)
 //
 //  Kullanim:
 //    BASE_URL=https://deger.markamiz.com node scripts/qr-uret.js
@@ -13,7 +13,7 @@
 const fs = require("fs");
 const path = require("path");
 const QRCode = require("qrcode");
-const { stantSvg } = require("../tasarim");
+const { stantSvg, SABLON_ADLARI } = require("../tasarim");
 
 const DEFAULT_BASE = "https://deger.markamiz.com";
 const BASE_URL = (process.env.BASE_URL || DEFAULT_BASE).replace(/\/+$/, "");
@@ -45,10 +45,12 @@ async function main() {
     const svgStr = await QRCode.toString(hedef, { ...secenek, type: "svg" });
     fs.writeFileSync(svg, svgStr);
 
-    // baskiya hazir masa standi (isletme adi + logo + QR dinamik)
-    const stant = path.join(OUT_DIR, `${r.slug}-stant.svg`);
+    // baskiya hazir masa stantlari (isletme adi + logo + QR dinamik)
     const logoYolu = r.logo ? path.join(LOGO_DIR, r.logo) : null;
-    fs.writeFileSync(stant, await stantSvg(r.isletme || r.slug, hedef, logoYolu));
+    for (const sablon of SABLON_ADLARI) {
+      const stant = path.join(OUT_DIR, `${r.slug}-stant-${sablon}.svg`);
+      fs.writeFileSync(stant, await stantSvg(r.isletme || r.slug, hedef, logoYolu, sablon));
+    }
 
     console.log(`✓ ${r.slug.padEnd(20)} -> ${hedef}`);
     n++;

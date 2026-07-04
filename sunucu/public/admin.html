@@ -231,7 +231,8 @@ async function listele(){
         <td><a href="/r/${encodeURIComponent(r.slug)}" target="_blank">aç ↗</a></td>
         <td><div style="display:flex;gap:6px">
           <button class="btn-ghost btn-sm" onclick="qrIndir('${esc(r.slug)}')">QR</button>
-          <button class="btn-ghost btn-sm" onclick="stantIndir('${esc(r.slug)}')">Stant</button>
+          <button class="btn-ghost btn-sm" onclick="stantIndir('${esc(r.slug)}','dik')" title="Dik stant (DL 100×210)">Dik</button>
+          <button class="btn-ghost btn-sm" onclick="stantIndir('${esc(r.slug)}','yatay')" title="Yatay stant (140×100)">Yatay</button>
         </div></td>
         <td><div class="rowbtns">
           <button class="btn-ghost btn-sm" onclick="duzenle('${esc(r.slug)}')">Düzenle</button>
@@ -310,7 +311,7 @@ async function dosyaIndir(yol, dosyaAdi){
   }catch(e){ mesaj(e.message,"err"); }
 }
 function qrIndir(slug){ dosyaIndir("/api/qr/"+encodeURIComponent(slug)+".png", slug+".png"); }
-function stantIndir(slug){ dosyaIndir("/api/tasarim/"+encodeURIComponent(slug)+".svg", slug+"-stant.svg"); }
+function stantIndir(slug, sablon){ dosyaIndir("/api/tasarim/"+encodeURIComponent(slug)+".svg?sablon="+sablon, slug+"-stant-"+sablon+".svg"); }
 
 /* ---------- yardımcı ---------- */
 function mesaj(t, tip){ const m=$("msg"); m.textContent=t; m.className="msg "+(tip||""); if(tip) setTimeout(()=>m.className="msg",4000); }
