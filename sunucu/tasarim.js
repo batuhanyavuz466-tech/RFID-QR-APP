@@ -28,14 +28,15 @@ const SABLONLAR = {
       cift: { y1: 161, y2: 182, tavan: 21 },
     },
   },
+  // krem: A5 (viewBox 0 0 560 794). Dinamik alanlar: logo kutusu, ad, QR.
   krem: {
     dosya: "stant-krem.svg",
-    qr: { x: 129.14, y: 324.65, mm: 138 },
-    logo: { x: 141, y: 78, w: 120, h: 44 },
+    qr: { x: 210.35, y: 316.94, mm: 135 },
+    logo: { x: 222, y: 76, w: 116, h: 43 },
     ad: {
-      x: 200.3, hiza: "middle", genislik: 230, renk: "#1B1B1F",
-      tek: { y: 168, tavan: 32 },
-      cift: { y1: 152, y2: 173, tavan: 20 },
+      x: 280, hiza: "middle", genislik: 290, renk: "#1B1B1F",
+      tek: { y: 165, tavan: 34 },
+      cift: { y1: 150, y2: 174, tavan: 22 },
     },
   },
 };
