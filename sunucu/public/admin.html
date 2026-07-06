@@ -231,8 +231,8 @@ async function listele(){
         <td><a href="/r/${encodeURIComponent(r.slug)}" target="_blank">aç ↗</a></td>
         <td><div style="display:flex;gap:6px">
           <button class="btn-ghost btn-sm" onclick="qrIndir('${esc(r.slug)}')">QR</button>
-          <button class="btn-ghost btn-sm" onclick="stantIndir('${esc(r.slug)}','dik')" title="Dik stant (DL 100×210)">Dik</button>
-          <button class="btn-ghost btn-sm" onclick="stantIndir('${esc(r.slug)}','yatay')" title="Yatay stant (140×100)">Yatay</button>
+          <button class="btn-ghost btn-sm" onclick="stantIndir('${esc(r.slug)}','renkli')" title="Renkli afiş (DL 100×210)">Renkli</button>
+          <button class="btn-ghost btn-sm" onclick="stantIndir('${esc(r.slug)}','krem')" title="Krem afiş (DL 100×210)">Krem</button>
         </div></td>
         <td><div class="rowbtns">
           <button class="btn-ghost btn-sm" onclick="duzenle('${esc(r.slug)}')">Düzenle</button>

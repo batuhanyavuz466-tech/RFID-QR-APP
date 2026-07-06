@@ -197,10 +197,10 @@ app.get("/api/qr/:slug.png", yetki, async (req, res) => {
 });
 
 // Baskiya hazir masa standi (SVG) - panelden indirilir.
-// Isletme adi + logo + QR dinamik. ?sablon=dik|yatay (varsayilan dik).
+// Isletme adi + logo + QR dinamik. ?sablon=renkli|krem (varsayilan renkli).
 app.get("/api/tasarim/:slug.svg", yetki, async (req, res) => {
   const slug = String(req.params.slug || "").toLowerCase();
-  const sablon = String(req.query.sablon || "dik");
+  const sablon = String(req.query.sablon || "renkli");
   if (!SABLON_ADLARI.includes(sablon)) return res.status(400).json({ hata: "Gecersiz sablon. Secenekler: " + SABLON_ADLARI.join(", ") });
   const { map } = veriOku();
   const r = map.get(slug);

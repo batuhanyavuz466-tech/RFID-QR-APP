@@ -11,31 +11,31 @@ const QRCode = require("qrcode");
 
 const SABLON_DIZIN = path.join(__dirname, "sablonlar");
 
-// Her sablonun dosyasi ve dinamik alanlarin yerlesimi (mm, viewBox birimi).
+// Her sablonun dosyasi ve dinamik alanlarin yerlesimi (viewBox birimi).
+// Sablonlar dik (portre) DL formatinda; viewBox 0 0 401 817.
 // qr    : QR'in sol-ust kosesi ve kenar uzunlugu (sessiz alani beyaz kart saglar)
-// logo  : logonun sigdirilecegi kutu (oran korunur)
-// ad    : isletme adi; logolu = logo varken tek satir, tek/cift = logosuz yerlesim
+// logo  : logonun (opsiyonel) sigdirilecegi kutu, oran korunur; yoksa bos kalir
+// ad    : isletme adi; kendi ayrilmis satirinda (logodan bagimsiz).
+//         tek = tek satir, cift = uzun ad iki satira boluner, punto kuculur.
 const SABLONLAR = {
-  dik: {
-    dosya: "stant-dl-on.svg",
-    qr: { x: 31, y: 84.5, mm: 44 },
-    logo: { x: 36, y: 18.5, w: 34, h: 12 },
+  renkli: {
+    dosya: "stant-renkli.svg",
+    qr: { x: 132.28, y: 359.06, mm: 136 },
+    logo: { x: 140, y: 70, w: 120, h: 46 },
     ad: {
-      x: 53, hiza: "middle", genislik: 80, renk: "#1B1B1F",
-      logolu: { y: 35.5, tavan: 5 },
-      tek: { y: 30, tavan: 7.5 },
-      cift: { y1: 26.5, y2: 33.5, tavan: 6 },
+      x: 200.3, hiza: "middle", genislik: 230, renk: "#FFFFFF",
+      tek: { y: 178, tavan: 34 },
+      cift: { y1: 161, y2: 182, tavan: 21 },
     },
   },
-  yatay: {
-    dosya: "stant-yatay.svg",
-    qr: { x: 96, y: 28, mm: 38 },
-    logo: { x: 15, y: 13, w: 42, h: 14 },
+  krem: {
+    dosya: "stant-krem.svg",
+    qr: { x: 129.14, y: 324.65, mm: 138 },
+    logo: { x: 141, y: 78, w: 120, h: 44 },
     ad: {
-      x: 15, hiza: "start", genislik: 55, renk: "#FFFFFF",
-      logolu: { y: 32.5, tavan: 4.5 },
-      tek: { y: 21.5, tavan: 6.5 },
-      cift: { y1: 17.5, y2: 24.5, tavan: 5 },
+      x: 200.3, hiza: "middle", genislik: 230, renk: "#1B1B1F",
+      tek: { y: 168, tavan: 32 },
+      cift: { y1: 152, y2: 173, tavan: 20 },
     },
   },
 };
@@ -57,17 +57,14 @@ function xmlKacis(s) {
 function adSatir(metin, taban, punto, adCfg) {
   return (
     `  <text x="${adCfg.x}" y="${taban}" text-anchor="${adCfg.hiza}" font-size="${punto}" ` +
-    `font-weight="800" fill="${adCfg.renk}" letter-spacing="0.2">${xmlKacis(metin)}</text>`
+    `font-family="'Helvetica Neue',Arial,sans-serif" font-weight="800" fill="${adCfg.renk}" ` +
+    `letter-spacing="0.2">${xmlKacis(metin)}</text>`
   );
 }
 
-function adBlok(ad, logoluMu, adCfg) {
+// Isletme adi bloku: sablondaki ayrilmis ad satirina yerlesir (logodan bagimsiz).
+function adBlok(ad, adCfg) {
   ad = String(ad).trim().replace(/\s+/g, " ");
-  if (logoluMu) {
-    // logo ust alani kapladigi icin ad tek satir, logonun hemen altinda
-    const p = siganPunto(ad.length, adCfg.logolu.tavan, adCfg.genislik);
-    return adSatir(ad, adCfg.logolu.y, p.toFixed(2), adCfg);
-  }
   const tekPunto = siganPunto(ad.length, adCfg.tek.tavan, adCfg.genislik);
   if (tekPunto >= adCfg.cift.tavan * 0.85 || !ad.includes(" ")) {
     return adSatir(ad, adCfg.tek.y, tekPunto.toFixed(2), adCfg);
@@ -97,8 +94,8 @@ function logoBlok(logoYolu, kutu) {
 }
 
 // Baskiya hazir stant SVG'si (string) dondurur.
-// sablonAdi: "dik" (varsayilan) | "yatay"  -  logoYolu opsiyoneldir.
-async function stantSvg(isletme, hedefUrl, logoYolu, sablonAdi = "dik") {
+// sablonAdi: "renkli" (varsayilan) | "krem"  -  logoYolu opsiyoneldir.
+async function stantSvg(isletme, hedefUrl, logoYolu, sablonAdi = "renkli") {
   const cfg = SABLONLAR[sablonAdi];
   if (!cfg) throw new Error(`Bilinmeyen sablon: ${sablonAdi}`);
   const sablon = fs.readFileSync(path.join(SABLON_DIZIN, cfg.dosya), "utf8");
@@ -120,7 +117,7 @@ async function stantSvg(isletme, hedefUrl, logoYolu, sablonAdi = "dik") {
 
   return sablon
     .replace(/\{\{LOGO_BLOK\}\}/g, () => logo)
-    .replace(/\{\{AD_BLOK\}\}/g, adBlok(isletme, !!logo, cfg.ad))
+    .replace(/\{\{AD_BLOK\}\}/g, adBlok(isletme, cfg.ad))
     .replace(/\{\{QR\}\}/g, qrG);
 }
 

@@ -3,7 +3,7 @@
 //  restoranlar.json'daki her isletme icin QR uretir.
 //  QR icerigi: <BASE_URL>/r/<slug>  (ham Google linki DEGIL!)
 //  Cikti: cikti-qr/<slug>.png, <slug>.svg ve <slug>-stant-<sablon>.svg
-//  (stant = baskiya hazir masa standi; sablonlar: dik, yatay)
+//  (stant = baskiya hazir masa standi; sablonlar: renkli, krem)
 //
 //  Kullanim:
 //    BASE_URL=https://deger.markamiz.com node scripts/qr-uret.js
