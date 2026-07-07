@@ -113,9 +113,11 @@ app.get("/r/:slug", (req, res) => {
   res.redirect(302, r.url);
 });
 
-app.get("/", (_req, res) =>
-  res.type("html").send(html("Deger Yonlendirme", 'Calisiyor. Yonetim paneli: <a style="color:#C9A24B" href="/admin">/admin</a>'))
-);
+// Tanitim sayfasi (landing page)
+app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+
+// Tanitim sayfasinin gorselleri (logo, urun fotograflari)
+app.use("/assets", express.static(path.join(__dirname, "public", "assets")));
 
 // ---------------- Yonetim paneli ----------------
 app.get("/admin", (_req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));

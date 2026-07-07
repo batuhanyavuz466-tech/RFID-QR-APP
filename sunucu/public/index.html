@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ArtıBirYorum — QR &amp; NFC Masa Standı ile Google Yorumları</title>
+<meta name="description" content="ArtıBirYorum; masanızdaki şık QR & NFC stant ile müşterilerinizi saniyeler içinde Google değerlendirme sayfanıza yönlendirir. Baskıya hazır tasarım, QR & NFC, sıfır veri toplama." />
+<meta property="og:title" content="ArtıBirYorum — Memnun müşteriniz, Google yorumunuza tek dokunuş uzaklıkta" />
+<meta property="og:description" content="QR & NFC masa standı platformu: baskıya hazır tasarımlar, anında yönlendirme, gizlilik odaklı altyapı." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230E1726'/%3E%3Cg stroke='%23C9A24B' stroke-width='5' fill='none' stroke-linecap='round'%3E%3Ccircle cx='33' cy='27' r='16'/%3E%3Cpath d='M26 22v11M20.5 27.5H31'/%3E%3Cpath d='M36 22c3-.8 4.8-2.4 5.8-5v19'/%3E%3C/g%3E%3Cpath d='M21.5 39L15 53l15.5-7.5z' fill='%23C9A24B'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* ============ Design tokens ============ */
+  :root{
+    /* Palet, baskı materyallerimizdeki lacivert + altın kimliğinden türetildi */
+    --bg:#090F1C;
+    --bg-2:#0D1726;
+    --surface:rgba(148,178,224,.05);
+    --surface-2:rgba(148,178,224,.09);
+    --line:rgba(160,190,235,.11);
+    --line-strong:rgba(160,190,235,.2);
+    --ink:#F3F7FD;
+    --muted:#9FB0C9;
+    --muted-2:#6E7F99;
+    --gold:#C9A24B;
+    --gold-2:#E8C77E;
+    --gold-deep:#8F6F2D;
+    --gold-ink:#221A08;
+    --ok:#4ADE80;
+    --radius:18px;
+    --radius-lg:26px;
+    --shadow-lg:0 24px 60px -12px rgba(0,0,0,.55);
+    --font:'Plus Jakarta Sans','Segoe UI Variable Display','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+    --ease:cubic-bezier(.22,.9,.3,1);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  html:focus-within{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:var(--font);font-size:16px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    overflow-x:hidden;
+  }
+  ::selection{background:rgba(201,162,75,.35);color:#fff}
+  img,svg{max-width:100%;display:block}
+  a{color:inherit}
+  h1,h2,h3{line-height:1.15;margin:0;font-weight:800;letter-spacing:-.02em}
+  p{margin:0}
+
+  /* Erişilebilirlik: klavye odağı her yerde net görünür */
+  :focus-visible{outline:2px solid var(--gold-2);outline-offset:3px;border-radius:6px}
+  .skip{
+    position:absolute;left:16px;top:-48px;z-index:100;background:var(--gold);color:var(--gold-ink);
+    padding:10px 16px;border-radius:10px;font-weight:700;text-decoration:none;transition:top .2s var(--ease);
+  }
+  .skip:focus{top:16px}
+
+  .wrap{width:min(1160px,100% - 48px);margin-inline:auto}
+  @media (max-width:560px){ .wrap{width:calc(100% - 36px)} }
+
+  /* ============ Arka plan dokusu ============ */
+  .bg-fx{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+  .bg-fx::before{ /* üst altın ışıma */
+    content:"";position:absolute;top:-320px;left:50%;transform:translateX(-50%);
+    width:1100px;height:700px;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(201,162,75,.16),transparent 70%);
+  }
+  .bg-fx::after{ /* alt mavi ışıma */
+    content:"";position:absolute;bottom:-380px;right:-240px;
+    width:900px;height:700px;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(56,102,177,.14),transparent 70%);
+  }
+  .grid-fx{
+    position:absolute;inset:0;
+    background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
+    background-size:56px 56px;
+    mask-image:radial-gradient(ellipse 90% 60% at 50% 0%,#000 30%,transparent 75%);
+    -webkit-mask-image:radial-gradient(ellipse 90% 60% at 50% 0%,#000 30%,transparent 75%);
+  }
+
+  /* ============ Navigasyon: yüzen cam "pill" ============ */
+  .nav{position:sticky;top:14px;z-index:50;padding:0}
+  .nav-in{
+    display:flex;align-items:center;gap:20px;height:62px;
+    padding:0 12px 0 20px;border-radius:999px;
+    border:1px solid var(--line);
+    background:rgba(9,15,28,.7);
+    backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);
+    box-shadow:0 14px 44px -20px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.05);
+    transition:border-color .3s var(--ease),background .3s var(--ease);
+  }
+  .nav.is-scrolled .nav-in{border-color:var(--line-strong);background:rgba(9,15,28,.92)}
+  .brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:800;font-size:18px;letter-spacing:-.01em}
+  .brand .b1{color:var(--gold-2)}
+  .brand-mark{
+    width:38px;height:38px;flex:none;
+    display:grid;place-items:center;
+    filter:drop-shadow(0 4px 12px rgba(201,162,75,.35));
+  }
+  .brand-mark svg{width:100%;height:100%}
+  .nav-links{display:flex;gap:4px;margin-left:auto}
+  .nav-links a{
+    text-decoration:none;color:var(--muted);font-size:14px;font-weight:600;
+    padding:8px 14px;border-radius:999px;transition:color .2s,background .2s;
+  }
+  .nav-links a:hover{color:var(--ink);background:var(--surface-2)}
+  .nav-cta{margin-left:8px}
+  @media (max-width:840px){ .nav-links{display:none} .nav-cta{margin-left:auto} }
+
+  /* ============ Butonlar ============ */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    font-weight:700;font-size:15px;text-decoration:none;cursor:pointer;
+    border-radius:999px;padding:13px 26px;border:1px solid transparent;
+    transition:transform .18s var(--ease),box-shadow .25s var(--ease),background .2s,border-color .2s;
+    will-change:transform;
+  }
+  .btn:active{transform:translateY(1px) scale(.99)}
+  .btn-gold{
+    background:linear-gradient(140deg,var(--gold-2),var(--gold) 60%,var(--gold-deep));
+    color:var(--gold-ink);
+    box-shadow:0 8px 22px -6px rgba(201,162,75,.5), inset 0 1px 0 rgba(255,255,255,.35);
+  }
+  .btn-gold:hover{transform:translateY(-2px);box-shadow:0 14px 30px -6px rgba(201,162,75,.55), inset 0 1px 0 rgba(255,255,255,.35)}
+  .btn-ghost{
+    background:var(--surface);color:var(--ink);border-color:var(--line-strong);
+  }
+  .btn-ghost:hover{background:var(--surface-2);border-color:rgba(255,255,255,.28);transform:translateY(-2px)}
+  .btn-sm{padding:9px 18px;font-size:13.5px}
+  .btn .arr{transition:transform .2s var(--ease)}
+  .btn:hover .arr{transform:translateX(3px)}
+
+  /* İletişim butonu: Instagram hesabımıza yönlendirir */
+  .btn-contact{
+    background:var(--surface);color:var(--ink);border-color:var(--line-strong);
+    gap:12px;padding:9px 22px 9px 11px;text-align:left;
+  }
+  .btn-contact:hover{background:var(--surface-2);border-color:rgba(255,255,255,.28);transform:translateY(-2px)}
+  .btn-contact .ig{
+    width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;
+    background:linear-gradient(45deg,#F58529 5%,#DD2A7B 55%,#8134AF 90%);
+    box-shadow:0 6px 16px -4px rgba(221,42,123,.45);
+  }
+  .btn-contact b{display:block;font-size:14.5px;line-height:1.25;font-weight:800}
+  .btn-contact small{display:block;font-size:12.5px;line-height:1.25;font-weight:700;color:var(--muted)}
+  .btn-contact small .at{color:var(--gold-2)}
+
+  /* ============ Hero ============ */
+  .hero{padding:88px 0 40px;position:relative}
+  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+  @media (max-width:960px){ .hero-grid{grid-template-columns:1fr;gap:64px} .hero{padding-top:56px} }
+
+  .chip{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:12.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--gold-2);background:rgba(201,162,75,.1);
+    border:1px solid rgba(201,162,75,.32);
+    padding:7px 14px;border-radius:999px;
+  }
+  .chip .dot{width:7px;height:7px;border-radius:50%;background:var(--gold-2);box-shadow:0 0 10px var(--gold-2)}
+
+  .hero h1{
+    font-size:clamp(34px,4.6vw,58px);
+    margin:22px 0 18px;
+  }
+  .hero h1 .glow{
+    background:linear-gradient(120deg,var(--gold-2) 10%,var(--gold) 45%,#F5DFA9 80%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero .lede{font-size:clamp(16px,1.5vw,18.5px);color:var(--muted);max-width:54ch}
+  .hero-cta{display:flex;gap:14px;margin-top:34px;flex-wrap:wrap}
+
+  .hero-proof{display:flex;gap:28px;margin-top:44px;flex-wrap:wrap}
+  .proof{min-width:120px}
+  .proof b{display:block;font-size:24px;font-weight:800;letter-spacing:-.02em}
+  .proof b em{font-style:normal;color:var(--gold-2)}
+  .proof span{font-size:13px;color:var(--muted-2);font-weight:600}
+
+  /* Hero görseli: gerçek ürün fotoğrafları, katmanlı sunum */
+  .stage{position:relative;display:grid;place-items:center;padding:20px 0}
+  .stage-glow{
+    position:absolute;width:82%;height:82%;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(201,162,75,.24),transparent 72%);
+    filter:blur(10px);
+  }
+  .stand{
+    grid-area:1/1;width:min(250px,56vw);height:auto;
+    border-radius:20px;
+    box-shadow:var(--shadow-lg), 0 0 0 1px rgba(255,255,255,.09);
+  }
+  .stand-front{
+    position:relative;z-index:2;
+    transform:rotate(-3deg);
+    animation:float 7s ease-in-out infinite;
+  }
+  .stand-back{
+    z-index:1;
+    transform:translateX(96px) rotate(8deg) scale(.88);
+    opacity:.45;filter:brightness(.75) saturate(.9);
+  }
+  @media (max-width:480px){ .stand-back{display:none} }
+  @keyframes float{ 0%,100%{transform:rotate(-3deg) translateY(0)} 50%{transform:rotate(-3deg) translateY(-12px)} }
+
+  .float-chip{
+    position:absolute;z-index:3;display:flex;align-items:center;gap:9px;
+    background:rgba(17,26,43,.92);border:1px solid var(--line-strong);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border-radius:14px;padding:11px 16px;font-size:13.5px;font-weight:700;
+    box-shadow:0 16px 40px -8px rgba(0,0,0,.6);
+    animation:float 7s ease-in-out infinite;
+  }
+  .float-chip small{display:block;font-weight:600;color:var(--muted);font-size:11.5px}
+  .fc-1{top:6%;right:2%;animation-delay:-2.2s}
+  .fc-2{bottom:9%;left:0;animation-delay:-4.5s}
+  @media (max-width:400px){ .fc-1{right:-6px} }
+  .stars{color:var(--gold-2);letter-spacing:2px;font-size:14px}
+  .fc-ic{
+    width:34px;height:34px;border-radius:9px;flex:none;display:grid;place-items:center;
+    background:rgba(201,162,75,.14);color:var(--gold-2);
+  }
+
+  /* ============ Bölüm iskeleti ============ */
+  section{padding:96px 0;position:relative}
+  @media (max-width:700px){ section{padding:72px 0} }
+  .sec-head{max-width:640px;margin:0 auto 56px;text-align:center}
+  .sec-head .chip{margin-bottom:18px}
+  .sec-head h2{font-size:clamp(27px,3.2vw,40px);margin-bottom:14px}
+  .sec-head p{color:var(--muted);font-size:16.5px}
+
+  /* ============ Özellikler: bento grid (2 görselli büyük + 4 küçük kart) ============ */
+  .feat-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}
+  .feat{grid-column:span 3}
+  .feat.feat-lg{
+    grid-column:span 6;
+    display:grid;grid-template-columns:1.1fr .9fr;align-items:stretch;
+    padding:0;
+  }
+  .feat.feat-lg .feat-body{padding:30px 6px 30px 28px}
+  .feat-fx{position:relative;overflow:hidden;min-height:230px}
+  .feat-fx img{
+    position:absolute;top:28px;left:50%;width:72%;height:auto;
+    transform:translateX(-50%) rotate(5deg);
+    border-radius:12px;
+    box-shadow:0 18px 44px -12px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.08);
+    transition:transform .35s var(--ease);
+  }
+  .feat-lg:hover .feat-fx img{transform:translateX(-50%) rotate(2.5deg) translateY(-8px)}
+  .feat-fx::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(180deg,transparent 58%,rgba(9,15,28,.55));
+  }
+  @media (max-width:960px){
+    .feat.feat-lg{grid-column:span 12}
+    .feat{grid-column:span 6}
+  }
+  @media (max-width:620px){
+    .feat,.feat.feat-lg{grid-column:span 12}
+    .feat.feat-lg{grid-template-columns:1fr}
+    .feat.feat-lg .feat-body{padding:26px 24px 0}
+    .feat-fx{min-height:210px}
+    .feat-fx img{top:22px;width:min(62%,220px)}
+  }
+  .feat{
+    position:relative;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius-lg);padding:28px 26px;overflow:hidden;
+    transition:transform .25s var(--ease),border-color .25s,background .25s;
+  }
+  .feat::before{ /* üst kenarda altın parıltı */
+    content:"";position:absolute;top:0;left:24px;right:24px;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(201,162,75,.5),transparent);
+    opacity:0;transition:opacity .3s;
+  }
+  .feat:hover{transform:translateY(-5px);border-color:rgba(201,162,75,.3);background:var(--surface-2)}
+  .feat:hover::before{opacity:1}
+  .feat-ic{
+    width:46px;height:46px;border-radius:13px;display:grid;place-items:center;margin-bottom:18px;
+    background:linear-gradient(150deg,rgba(201,162,75,.2),rgba(201,162,75,.06));
+    border:1px solid rgba(201,162,75,.28);color:var(--gold-2);
+  }
+  .feat h3{font-size:17.5px;margin-bottom:9px;font-weight:700}
+  .feat p{font-size:14.5px;color:var(--muted)}
+
+  /* ============ Nasıl çalışır ============ */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;counter-reset:step}
+  @media (max-width:860px){ .steps{grid-template-columns:1fr;max-width:520px;margin-inline:auto} }
+  .step{
+    position:relative;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius-lg);padding:34px 28px 30px;
+  }
+  .step-no{
+    counter-increment:step;
+    position:absolute;top:-18px;left:26px;
+    width:38px;height:38px;border-radius:11px;display:grid;place-items:center;
+    background:linear-gradient(140deg,var(--gold-2),var(--gold) 60%,var(--gold-deep));
+    color:var(--gold-ink);font-weight:800;font-size:16px;
+    box-shadow:0 8px 18px -4px rgba(201,162,75,.5);
+  }
+  .step-no::before{content:counter(step)}
+  .step h3{font-size:17.5px;margin:8px 0 9px;font-weight:700}
+  .step p{font-size:14.5px;color:var(--muted)}
+  .step .mini{margin-top:18px;border-radius:12px;border:1px solid var(--line);overflow:hidden;background:var(--bg-2)}
+
+  /* ============ Tasarımlar: gerçek baskı görselleri ============ */
+  .gal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px;align-items:start;max-width:860px;margin-inline:auto}
+  @media (max-width:860px){ .gal-grid{grid-template-columns:1fr;max-width:420px} }
+  .gal{
+    margin:0;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius-lg);padding:16px 16px 4px;
+    transition:transform .25s var(--ease),border-color .25s,background .25s;
+  }
+  .gal:hover{transform:translateY(-5px);border-color:rgba(201,162,75,.35);background:var(--surface-2)}
+  .gal .ph{
+    border-radius:14px;overflow:hidden;aspect-ratio:3/4;
+    box-shadow:0 18px 40px -16px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.06);
+  }
+  .gal .ph img{width:100%;height:100%;object-fit:cover;object-position:top;transition:transform .5s var(--ease)}
+  .gal:hover .ph img{transform:scale(1.04)}
+  .gal figcaption{padding:18px 6px 16px}
+  .gal h3{font-size:17px;margin:10px 0 7px;font-weight:700}
+  .gal figcaption p{font-size:14px;color:var(--muted)}
+  .tag{
+    display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--gold-2);background:rgba(201,162,75,.1);border:1px solid rgba(201,162,75,.3);
+    border-radius:999px;padding:4px 11px;
+  }
+
+  /* ============ Gizlilik bandı ============ */
+  .privacy{
+    display:grid;grid-template-columns:auto 1fr auto;gap:26px;align-items:center;
+    background:linear-gradient(120deg,rgba(201,162,75,.12),rgba(201,162,75,.03) 55%),var(--surface);
+    border:1px solid rgba(201,162,75,.3);border-radius:var(--radius-lg);padding:34px 38px;
+  }
+  @media (max-width:820px){ .privacy{grid-template-columns:1fr;text-align:center;justify-items:center} }
+  .privacy h3{font-size:21px;margin-bottom:8px}
+  .privacy p{color:var(--muted);font-size:15px;max-width:62ch}
+  .privacy-ic{
+    width:64px;height:64px;border-radius:18px;display:grid;place-items:center;
+    background:linear-gradient(150deg,rgba(201,162,75,.25),rgba(201,162,75,.08));
+    border:1px solid rgba(201,162,75,.35);color:var(--gold-2);flex:none;
+  }
+
+  /* ============ SSS ============ */
+  .faq{max-width:720px;margin-inline:auto;display:grid;gap:12px}
+  .faq details{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    transition:border-color .25s;
+  }
+  .faq details[open]{border-color:rgba(201,162,75,.35);background:var(--surface-2)}
+  .faq summary{
+    cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:19px 22px;font-weight:700;font-size:15.5px;border-radius:var(--radius);
+  }
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary .pl{
+    flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+    color:var(--gold-2);background:rgba(201,162,75,.12);font-weight:800;font-size:16px;
+    transition:transform .25s var(--ease);
+  }
+  .faq details[open] summary .pl{transform:rotate(45deg)}
+  .faq .ans{padding:0 22px 20px;color:var(--muted);font-size:14.5px;max-width:66ch}
+
+  /* ============ Kapanış CTA ============ */
+  .final{
+    text-align:center;position:relative;overflow:hidden;
+    background:var(--surface);border:1px solid var(--line);border-radius:28px;
+    padding:clamp(48px,7vw,84px) 28px;
+  }
+  .final::before{
+    content:"";position:absolute;top:-260px;left:50%;transform:translateX(-50%);
+    width:720px;height:440px;border-radius:50%;pointer-events:none;
+    background:radial-gradient(closest-side,rgba(201,162,75,.2),transparent 70%);
+  }
+  .final h2{font-size:clamp(26px,3.4vw,42px);margin-bottom:14px;position:relative}
+  .final p{color:var(--muted);max-width:52ch;margin:0 auto 32px;position:relative}
+  .final .hero-cta{justify-content:center;margin-top:0;position:relative}
+
+  /* ============ Footer ============ */
+  footer{border-top:1px solid var(--line);padding:36px 0 44px;margin-top:40px}
+  .foot{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  .foot .brand{font-size:16px}
+  .foot .brand-mark{width:28px;height:28px;border-radius:8px}
+  .foot-links{display:flex;gap:22px;flex-wrap:wrap}
+  .foot-links a{color:var(--muted);text-decoration:none;font-size:13.5px;font-weight:600;transition:color .2s}
+  .foot-links a:hover{color:var(--ink)}
+  .foot small{color:var(--muted-2);font-size:12.5px}
+
+  /* ============ Reveal animasyonu ============ */
+  .rv{opacity:0;transform:translateY(26px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
+  .rv.in{opacity:1;transform:none}
+  .rv-d1{transition-delay:.08s} .rv-d2{transition-delay:.16s} .rv-d3{transition-delay:.24s}
+
+  /* Hareket azaltma tercihi: tüm animasyonlar kapanır */
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+    .rv{opacity:1;transform:none}
+  }
+</style>
+</head>
+<body>
+
+<a class="skip" href="#icerik">İçeriğe geç</a>
+<div class="bg-fx" aria-hidden="true"><div class="grid-fx"></div></div>
+
+<!-- ================= NAV ================= -->
+<header class="nav" id="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#" aria-label="ArtıBirYorum — ana sayfa">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="lg-gold" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#DFA34C"/><stop offset="1" stop-color="#77402C"/>
+            </linearGradient>
+          </defs>
+          <circle cx="33" cy="27" r="18" stroke="url(#lg-gold)" stroke-width="5.4"/>
+          <path d="M20.5 39.5 14 55l16.5-8.2z" fill="url(#lg-gold)" stroke="url(#lg-gold)" stroke-width="2.6" stroke-linejoin="round"/>
+          <path d="M26 21v12.5M19.7 27.2h12.6" stroke="url(#lg-gold)" stroke-width="5.2" stroke-linecap="round"/>
+          <path d="M36.5 21.5c3.4-.8 5.5-2.6 6.4-5.6v22.6" stroke="url(#lg-gold)" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      Artı<span class="b1">Bir</span>Yorum
+    </a>
+    <nav class="nav-links" aria-label="Ana menü">
+      <a href="#ozellikler">Özellikler</a>
+      <a href="#nasil">Nasıl Çalışır</a>
+      <a href="#sablonlar">Şablonlar</a>
+      <a href="#sss">SSS</a>
+    </nav>
+    <a class="btn btn-gold btn-sm nav-cta" href="https://www.instagram.com/artibiryorum" target="_blank" rel="noopener">İletişime Geç</a>
+  </div>
+</header>
+
+<main id="icerik">
+
+<!-- ================= HERO ================= -->
+<section class="hero" aria-labelledby="hero-baslik">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="chip rv in"><span class="dot" aria-hidden="true"></span> QR &amp; NFC Masa Standı Platformu</span>
+      <h1 id="hero-baslik" class="rv in rv-d1">Memnun müşteriniz, <span class="glow">Google yorumunuza</span> tek dokunuş uzaklıkta.</h1>
+      <p class="lede rv in rv-d2">ArtıBirYorum; masanızdaki şık stant üzerinden müşterilerinizi saniyeler içinde Google değerlendirme sayfanıza yönlendirir. Baskıya hazır tasarım, QR &amp; NFC — kurulumun tamamını sizin için biz üstleniyoruz.</p>
+      <div class="hero-cta rv in rv-d3">
+        <a class="btn btn-contact" href="https://www.instagram.com/artibiryorum" target="_blank" rel="noopener" aria-label="İletişime geç — Instagram hesabımız: artibiryorum">
+          <span class="ig" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.3"/><circle cx="17.4" cy="6.6" r="1.4" fill="currentColor" stroke="none"/></svg>
+          </span>
+          <span><b>İletişime Geç</b><small>Instagram · <span class="at">@artibiryorum</span></small></span>
+        </a>
+        <a class="btn btn-ghost" href="#nasil">Nasıl çalışır?</a>
+      </div>
+      <div class="hero-proof rv in rv-d3" role="list" aria-label="Öne çıkan rakamlar">
+        <div class="proof" role="listitem"><b><em>&lt;1</em> sn</b><span>Anında yönlendirme</span></div>
+        <div class="proof" role="listitem"><b><em>2</em> şablon</b><span>Krem &amp; renkli, baskıya hazır</span></div>
+        <div class="proof" role="listitem"><b><em>%0</em> veri</b><span>Analitik &amp; takip yok</span></div>
+        <div class="proof" role="listitem"><b><em>7/24</em></b><span>Instagram'dan destek</span></div>
+      </div>
+    </div>
+
+    <!-- Gerçek şablonlar: renkli (DL) önde, krem (A5) arkada -->
+    <div class="stage" aria-hidden="true">
+      <div class="stage-glow"></div>
+      <img class="stand stand-back" src="/assets/ornek-stant-krem.svg" alt="" loading="lazy" width="560" height="794" />
+      <img class="stand stand-front" src="/assets/ornek-stant-renkli.svg" alt="" width="401" height="817" />
+      <div class="float-chip fc-1">
+        <span class="fc-ic">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 6.5 6.9.3-5.4 4.3 1.9 6.7L12 15.9 6.2 19.8l1.9-6.7L2.7 8.8l6.9-.3z"/></svg>
+        </span>
+        <span><span class="stars">★★★★★</span><small>Yeni Google yorumu</small></span>
+      </div>
+      <div class="float-chip fc-2">
+        <span class="fc-ic">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8.4 8.4a5 5 0 017.2 0M5.6 5.6a9 9 0 0112.8 0"/><circle cx="12" cy="13.5" r="2.5" fill="currentColor" stroke="none"/></svg>
+        </span>
+        <span>NFC hazır<small>Tek dokunuş yeterli</small></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ÖZELLİKLER ================= -->
+<section id="ozellikler" aria-labelledby="ozellikler-baslik">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="chip">Özellikler</span>
+      <h2 id="ozellikler-baslik">Yorum toplamak için ihtiyacınız olan her şey</h2>
+      <p>Karmaşık kurulum yok, aylık sürpriz yok. Bize ulaşın; stantınız baskıya hazır olarak elinize ulaşsın.</p>
+    </div>
+    <div class="feat-grid">
+      <article class="feat feat-lg rv">
+        <div class="feat-body">
+          <span class="feat-ic" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4.5 13.5H11L9.5 22 19 10h-6.5z"/></svg>
+          </span>
+          <h3>Tek dokunuş, tek hedef</h3>
+          <p>QR kod veya NFC — müşteriniz hangisini seçerse seçsin, doğrudan Google değerlendirme sayfanıza ulaşır. Ara sayfa, bekleme, kayıt yok.</p>
+        </div>
+        <div class="feat-fx" aria-hidden="true">
+          <img src="/assets/ornek-stant-renkli.svg" alt="" loading="lazy" width="401" height="817" />
+        </div>
+      </article>
+      <article class="feat feat-lg rv rv-d1">
+        <div class="feat-body">
+          <span class="feat-ic" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7a4.95 4.95 0 00-7-7l-7 7a4.95 4.95 0 007 7z"/><path d="M8.5 8.5l7 7"/></svg>
+          </span>
+          <h3>Baskıya hazır tasarımlar</h3>
+          <p>Logonuz, işletme adınız ve QR kodunuz şablona özenle yerleştirilir. Matbaa kalitesinde vektörel SVG çıktınızı teslim ederiz, gerisini baskıcınıza bırakın.</p>
+        </div>
+        <div class="feat-fx" aria-hidden="true">
+          <img src="/assets/ornek-stant-krem.svg" alt="" loading="lazy" width="560" height="794" />
+        </div>
+      </article>
+      <article class="feat rv rv-d2">
+        <span class="feat-ic" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
+        </span>
+        <h3>Anahtar teslim hizmet</h3>
+        <p>İşletme bilgilerinizi ve logonuzu bize iletin; QR kodunuzu ve baskıya hazır stant dosyanızı sizin için biz hazırlayalım. Size hiçbir teknik iş kalmaz.</p>
+      </article>
+      <article class="feat rv">
+        <span class="feat-ic" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+        </span>
+        <h3>Gizlilik odaklı altyapı</h3>
+        <p>Analitik yok, çerez yok, müşteri takibi yok. Sistemde yalnızca üç bilgi tutulur: işletme adı, kısa bağlantı ve Google yorum linkiniz.</p>
+      </article>
+      <article class="feat rv rv-d1">
+        <span class="feat-ic" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 11-9-9"/><path d="M21 3l-9 9"/><path d="M15 3h6v6"/></svg>
+        </span>
+        <h3>Kalıcı bağlantılar</h3>
+        <p>Google linkiniz değişirse bize bildirmeniz yeterli; bağlantınızı anında güncelleriz ve basılı stantlarınız aynen çalışmaya devam eder. Yeniden baskı derdi yoktur.</p>
+      </article>
+      <article class="feat rv rv-d2">
+        <span class="feat-ic" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+        </span>
+        <h3>Kesintisiz hizmet</h3>
+        <p>İşletme bilgileriniz düzenli olarak yedeklenir; bağlantınız her zaman güvende ve çalışır durumda kalır. Stantınız masada olduğu sürece görevini yapar.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= NASIL ÇALIŞIR ================= -->
+<section id="nasil" aria-labelledby="nasil-baslik">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="chip">Nasıl Çalışır</span>
+      <h2 id="nasil-baslik">Üç adımda masanızda</h2>
+      <p>Kurulumdan ilk yoruma kadar geçen süre: bir baskı kadar.</p>
+    </div>
+    <div class="steps">
+      <article class="step rv">
+        <span class="step-no" aria-hidden="true"></span>
+        <h3>Instagram'dan bize ulaşın</h3>
+        <p><strong>@artibiryorum</strong> hesabımıza işletme adınızı, Google yorum bağlantınızı ve dilerseniz logonuzu gönderin. Size özel kısa bağlantınızı oluşturalım.</p>
+        <div class="mini" aria-hidden="true">
+          <svg viewBox="0 0 300 92" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="92" fill="#0E1726"/>
+            <rect x="16" y="14" width="180" height="14" rx="7" fill="rgba(255,255,255,.12)"/>
+            <rect x="16" y="38" width="268" height="14" rx="7" fill="rgba(255,255,255,.07)"/>
+            <rect x="16" y="62" width="84" height="16" rx="8" fill="#C9A24B"/>
+            <rect x="30" y="67" width="56" height="6" rx="3" fill="#221A08"/>
+          </svg>
+        </div>
+      </article>
+      <article class="step rv rv-d1">
+        <span class="step-no" aria-hidden="true"></span>
+        <h3>Stantınız hazırlansın</h3>
+        <p>Krem veya renkli şablonu seçin; logonuz, işletme adınız ve QR kodunuz yerleşmiş baskıya hazır tasarımınızı size teslim edelim.</p>
+        <div class="mini" aria-hidden="true">
+          <svg viewBox="0 0 300 92" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="92" fill="#0E1726"/>
+            <rect x="106" y="12" width="40" height="56" rx="4" fill="#F1EFE8"/>
+            <rect x="118" y="30" width="16" height="16" fill="#1B1B1F"/>
+            <rect x="112" y="18" width="28" height="4" rx="2" fill="#B58A3E"/>
+            <rect x="154" y="12" width="40" height="56" rx="4" fill="#25406B"/>
+            <rect x="166" y="30" width="16" height="16" fill="#fff"/>
+            <rect x="160" y="18" width="28" height="4" rx="2" fill="#fff" opacity=".7"/>
+            <path d="M150 76v8m0 0l-5-5m5 5l5-5" stroke="#C9A24B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </div>
+      </article>
+      <article class="step rv rv-d2">
+        <span class="step-no" aria-hidden="true"></span>
+        <h3>Yorumlar gelsin</h3>
+        <p>Stant masada, QR &amp; NFC hazır. Memnun müşteriniz oturduğu yerden 10 saniyede değerlendirmesini bırakır.</p>
+        <div class="mini" aria-hidden="true">
+          <svg viewBox="0 0 300 92" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="92" fill="#0E1726"/>
+            <g fill="#C9A24B">
+              <path d="M78 38l3.4 9.2 9.8.4-7.7 6.1 2.7 9.5-8.2-5.5-8.2 5.5 2.7-9.5-7.7-6.1 9.8-.4z"/>
+              <path d="M126 38l3.4 9.2 9.8.4-7.7 6.1 2.7 9.5-8.2-5.5-8.2 5.5 2.7-9.5-7.7-6.1 9.8-.4z"/>
+              <path d="M174 38l3.4 9.2 9.8.4-7.7 6.1 2.7 9.5-8.2-5.5-8.2 5.5 2.7-9.5-7.7-6.1 9.8-.4z"/>
+              <path d="M222 38l3.4 9.2 9.8.4-7.7 6.1 2.7 9.5-8.2-5.5-8.2 5.5 2.7-9.5-7.7-6.1 9.8-.4z"/>
+            </g>
+            <path d="M262 45l3.4 9.2 9.8.4-7.7 6.1 2.7 9.5-8.2-5.5-8.2 5.5 2.7-9.5-7.7-6.1 9.8-.4z" fill="rgba(201,162,75,.35)" transform="translate(-4,-7)"/>
+          </svg>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TASARIMLAR ================= -->
+<section id="sablonlar" aria-labelledby="sablonlar-baslik">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="chip">Tasarımlar</span>
+      <h2 id="sablonlar-baslik">İşletmenize yakışan iki tasarım</h2>
+      <p>Her ikisi de matbaa standartlarında, vektörel ve yüksek hata düzeltmeli QR ile üretilir. Logonuz ve işletme adınız şablona otomatik yerleşir.</p>
+    </div>
+    <div class="gal-grid">
+      <figure class="gal rv">
+        <div class="ph"><img src="/assets/ornek-stant-krem.svg" alt="Krem masa standı şablonu — A5 dikey" loading="lazy" width="560" height="794" /></div>
+        <figcaption>
+          <span class="tag">A5 · Dikey</span>
+          <h3>Krem</h3>
+          <p>Sıcak tonlar, altın vurgular ve zarif tipografi. Restoran, kafe ve butik işletmeler için premium bir görünüm.</p>
+        </figcaption>
+      </figure>
+      <figure class="gal rv rv-d1">
+        <div class="ph"><img src="/assets/ornek-stant-renkli.svg" alt="Renkli masa standı şablonu — DL dikey" loading="lazy" width="401" height="817" /></div>
+        <figcaption>
+          <span class="tag">DL · Dikey</span>
+          <h3>Renkli</h3>
+          <p>Lacivert zemin üzerine altın vurgular; masada fark yaratan koyu ve şık bir görünüm. QR &amp; NFC yönergeleri dahil.</p>
+        </figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ================= GİZLİLİK ================= -->
+<section aria-labelledby="gizlilik-baslik" style="padding-top:0">
+  <div class="wrap">
+    <div class="privacy rv">
+      <span class="privacy-ic" aria-hidden="true">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+      </span>
+      <div>
+        <h3 id="gizlilik-baslik">Müşterinizin verisi, bizim işimiz değil.</h3>
+        <p>ArtıBirYorum hiçbir analitik çalıştırmaz, çerez bırakmaz, kimseyi takip etmez. Müşteriniz koda dokunur, Google'a gider — arada hiçbir şey kaydedilmez. Şeffaflık, güvenin ilk adımıdır.</p>
+      </div>
+      <a class="btn btn-ghost" href="#sss">Detaylar</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SSS ================= -->
+<section id="sss" aria-labelledby="sss-baslik" style="padding-top:24px">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="chip">SSS</span>
+      <h2 id="sss-baslik">Sık sorulan sorular</h2>
+    </div>
+    <div class="faq rv">
+      <details>
+        <summary>Nasıl sipariş verebilirim? <span class="pl" aria-hidden="true">+</span></summary>
+        <p class="ans">Instagram'dan <strong>@artibiryorum</strong> hesabımıza mesaj atmanız yeterli. İşletme adınızı, Google yorum bağlantınızı ve dilerseniz logonuzu iletin; stantınızı baskıya hazır şekilde sizin için hazırlayalım.</p>
+      </details>
+      <details>
+        <summary>Google yorum bağlantımı nereden bulurum? <span class="pl" aria-hidden="true">+</span></summary>
+        <p class="ans">Google Business profilinizden "Yorum iste" seçeneğiyle size özel değerlendirme bağlantınızı kopyalayabilirsiniz. Bu bağlantıyı Instagram'dan bize iletmeniz yeterli — gerisini ArtıBirYorum halleder.</p>
+      </details>
+      <details>
+        <summary>Standı nerede bastırabilirim? <span class="pl" aria-hidden="true">+</span></summary>
+        <p class="ans">Size teslim ettiğimiz SVG dosyası vektöreldir ve tüm matbaaların çalıştığı standarttadır. Krem şablon A5 (148×210 mm), renkli şablon DL (106×216 mm) boyutundadır; 300–350 g/m² mat selefonlu kuşe kağıt öneririz.</p>
+      </details>
+      <details>
+        <summary>QR kodu yıpranırsa okunur mu? <span class="pl" aria-hidden="true">+</span></summary>
+        <p class="ans">Kodlar en yüksek hata düzeltme seviyesiyle (H) üretilir; yüzeyin %30'a kadarı hasar görse bile sorunsuz okunur. Beyaz kart alanı da kameralar için ideal kontrastı sağlar.</p>
+      </details>
+      <details>
+        <summary>Google bağlantım değişirse ne olur? <span class="pl" aria-hidden="true">+</span></summary>
+        <p class="ans">Yeni bağlantınızı Instagram'dan bize iletirsiniz, biz güncelleriz — hepsi bu. Stanttaki QR kod size özel kısa bağlantıya işaret ettiği için basılı materyalleriniz aynen çalışmaya devam eder — yeniden baskıya gerek kalmaz.</p>
+      </details>
+      <details>
+        <summary>Müşterilerim hakkında veri topluyor musunuz? <span class="pl" aria-hidden="true">+</span></summary>
+        <p class="ans">Hayır. Sistemde yalnızca işletme adınız, kısa bağlantınız ve Google yorum linkiniz tutulur. Tıklama takibi, çerez veya analitik yoktur; müşteriniz doğrudan Google'a yönlendirilir.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= KAPANIŞ CTA ================= -->
+<section aria-labelledby="cta-baslik" style="padding-top:0">
+  <div class="wrap">
+    <div class="final rv">
+      <h2 id="cta-baslik">Bugün masaya koyun,<br/>yarın yorumları izleyin.</h2>
+      <p>Instagram'dan bize yazın; işletmenizin Google profili kendi kendine büyümeye başlasın.</p>
+      <div class="hero-cta">
+        <a class="btn btn-gold" href="https://www.instagram.com/artibiryorum" target="_blank" rel="noopener">Instagram'dan İletişime Geç <span class="arr" aria-hidden="true">→</span></a>
+        <a class="btn btn-ghost" href="#ozellikler">Özellikleri İncele</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap foot">
+    <a class="brand" href="#" aria-label="ArtıBirYorum — başa dön">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="33" cy="27" r="18" stroke="url(#lg-gold)" stroke-width="5.4"/>
+          <path d="M20.5 39.5 14 55l16.5-8.2z" fill="url(#lg-gold)" stroke="url(#lg-gold)" stroke-width="2.6" stroke-linejoin="round"/>
+          <path d="M26 21v12.5M19.7 27.2h12.6" stroke="url(#lg-gold)" stroke-width="5.2" stroke-linecap="round"/>
+          <path d="M36.5 21.5c3.4-.8 5.5-2.6 6.4-5.6v22.6" stroke="url(#lg-gold)" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      Artı<span class="b1">Bir</span>Yorum
+    </a>
+    <nav class="foot-links" aria-label="Alt menü">
+      <a href="#ozellikler">Özellikler</a>
+      <a href="#nasil">Nasıl Çalışır</a>
+      <a href="#sablonlar">Şablonlar</a>
+      <a href="#sss">SSS</a>
+      <a href="https://www.instagram.com/artibiryorum" target="_blank" rel="noopener">Instagram</a>
+    </nav>
+    <small>© <span id="yil">2026</span> ArtıBirYorum. Tüm hakları saklıdır.</small>
+  </div>
+</footer>
+
+<script>
+  // Kaydırma sonrası nav'a çizgi/koyuluk ekle
+  const nav = document.getElementById("nav");
+  const onScroll = () => nav.classList.toggle("is-scrolled", window.scrollY > 8);
+  onScroll();
+  addEventListener("scroll", onScroll, { passive: true });
+
+  // Görünüme giren bölümleri yumuşakça ortaya çıkar (reduced-motion'da CSS devre dışı bırakır)
+  const io = new IntersectionObserver((girisler) => {
+    for (const g of girisler) if (g.isIntersecting) { g.target.classList.add("in"); io.unobserve(g.target); }
+  }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+  document.querySelectorAll(".rv:not(.in)").forEach((el) => io.observe(el));
+
+  document.getElementById("yil").textContent = new Date().getFullYear();
+</script>
+</body>
+</html>
