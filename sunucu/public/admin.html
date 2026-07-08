@@ -230,10 +230,12 @@ async function listele(){
           <button class="btn-ghost btn-sm" onclick="kopyala('${esc(tamUrl)}')">Kopyala</button>
         </div></td>
         <td><a href="/r/${encodeURIComponent(r.slug)}" target="_blank">aç ↗</a></td>
-        <td><div style="display:flex;gap:6px">
+        <td><div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn-ghost btn-sm" onclick="qrIndir('${esc(r.slug)}')">QR</button>
-          <button class="btn-ghost btn-sm" onclick="stantIndir('${esc(r.slug)}','renkli')" title="Renkli afiş (DL 100×210)">Renkli</button>
-          <button class="btn-ghost btn-sm" onclick="stantIndir('${esc(r.slug)}','krem')" title="Krem afiş (DL 100×210)">Krem</button>
+          <button class="btn-ghost btn-sm" onclick="stantIndir('${esc(r.slug)}','renkli')" title="Renkli afiş — SVG">Renkli SVG</button>
+          <button class="btn-ghost btn-sm" onclick="stantPdfIndir('${esc(r.slug)}','renkli')" title="Renkli afiş — baskıya hazır PDF (600 DPI)">Renkli PDF</button>
+          <button class="btn-ghost btn-sm" onclick="stantIndir('${esc(r.slug)}','krem')" title="Krem afiş — SVG">Krem SVG</button>
+          <button class="btn-ghost btn-sm" onclick="stantPdfIndir('${esc(r.slug)}','krem')" title="Krem afiş — baskıya hazır PDF (600 DPI)">Krem PDF</button>
         </div></td>
         <td><div class="rowbtns">
           <button class="btn-ghost btn-sm" onclick="duzenle('${esc(r.slug)}')">Düzenle</button>
@@ -302,17 +304,80 @@ async function silOnayla(slug){
 }
 
 /* ---------- QR / stant indir ---------- */
+function blobIndir(blob, dosyaAdi){
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=dosyaAdi; a.click(); URL.revokeObjectURL(a.href);
+}
 async function dosyaIndir(yol, dosyaAdi){
   try{
     const r = await fetch(yol,{ headers:{ "x-admin-key": key() }});
     if(r.status===401){ logout("Oturum geçersiz, tekrar giriş yap."); return; }
     if(!r.ok) throw new Error("Dosya alınamadı ("+r.status+")");
-    const blob = await r.blob();
-    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=dosyaAdi; a.click(); URL.revokeObjectURL(a.href);
+    blobIndir(await r.blob(), dosyaAdi);
   }catch(e){ mesaj(e.message,"err"); }
 }
 function qrIndir(slug){ dosyaIndir("/api/qr/"+encodeURIComponent(slug)+".png", slug+".png"); }
 function stantIndir(slug, sablon){ dosyaIndir("/api/tasarim/"+encodeURIComponent(slug)+".svg?sablon="+sablon, slug+"-stant-"+sablon+".svg"); }
+
+/* ---------- SVG -> PDF (matbaa çıktısı, tarayıcıda üretilir) ---------- */
+const PDF_DPI = 600; // baskı çözünürlüğü
+
+async function stantPdfIndir(slug, sablon){
+  try{
+    mesaj("PDF hazırlanıyor…","ok");
+    const r = await fetch("/api/tasarim/"+encodeURIComponent(slug)+".svg?sablon="+sablon,{ headers:{ "x-admin-key": key() }});
+    if(r.status===401){ logout("Oturum geçersiz, tekrar giriş yap."); return; }
+    if(!r.ok) throw new Error("Dosya alınamadı ("+r.status+")");
+    const blob = await svgToPdf(await r.text());
+    blobIndir(blob, slug+"-stant-"+sablon+".pdf");
+    mesaj("PDF indirildi: "+slug+"-stant-"+sablon+".pdf","ok");
+  }catch(e){ mesaj(e.message,"err"); }
+}
+
+// SVG'yi gerçek fiziksel boyutunda (mm) tek sayfalık PDF'e çevirir:
+// 600 DPI canvas'a çizilir, JPEG olarak PDF sayfasına gömülür.
+async function svgToPdf(svg){
+  const es = svg.match(/<svg[^>]*\bwidth="([\d.]+)mm"[^>]*\bheight="([\d.]+)mm"/);
+  if(!es) throw new Error("SVG boyutu (mm) okunamadı.");
+  const mmW = parseFloat(es[1]), mmH = parseFloat(es[2]);
+  const pxW = Math.round(mmW/25.4*PDF_DPI), pxH = Math.round(mmH/25.4*PDF_DPI);
+  // kök boyutu piksele çevir: tarayıcı SVG'yi tam bu çözünürlükte çizsin (büyütmede bulanıklık olmasın)
+  const svgPx = svg.replace(/\bwidth="[\d.]+mm"(\s+)height="[\d.]+mm"/, 'width="'+pxW+'"$1height="'+pxH+'"');
+  const url = URL.createObjectURL(new Blob([svgPx],{ type:"image/svg+xml" }));
+  try{
+    const img = new Image();
+    await new Promise((res,rej)=>{ img.onload=res; img.onerror=()=>rej(new Error("SVG çizilemedi.")); img.src=url; });
+    const c = document.createElement("canvas"); c.width=pxW; c.height=pxH;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,pxW,pxH); // JPEG'de saydam alan siyaha döner, önce beyaz doldur
+    ctx.drawImage(img,0,0,pxW,pxH);
+    const jpegBlob = await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("Görüntü üretilemedi.")),"image/jpeg",0.95));
+    const jpeg = new Uint8Array(await jpegBlob.arrayBuffer());
+    return pdfUret(jpeg, pxW, pxH, mmW*72/25.4, mmH*72/25.4);
+  }finally{ URL.revokeObjectURL(url); }
+}
+
+// Tek sayfalık, tek görüntülü minimal PDF (kütüphanesiz).
+function pdfUret(jpeg, pxW, pxH, ptW, ptH){
+  ptW=+ptW.toFixed(2); ptH=+ptH.toFixed(2);
+  const enc=new TextEncoder(), parcalar=[], ofsetler=[];
+  let boy=0;
+  const yaz=(x)=>{ const u = typeof x==="string" ? enc.encode(x) : x; parcalar.push(u); boy+=u.length; };
+  const obj=(s)=>{ ofsetler.push(boy); yaz(s); };
+  yaz("%PDF-1.4\n"); yaz(new Uint8Array([0x25,0xE2,0xE3,0xCF,0xD3,0x0A])); // ikili içerik işareti
+  obj("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  obj("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+  obj("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+ptW+" "+ptH+"] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n");
+  ofsetler.push(boy);
+  yaz("4 0 obj\n<< /Type /XObject /Subtype /Image /Width "+pxW+" /Height "+pxH+" /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+jpeg.length+" >>\nstream\n");
+  yaz(jpeg); yaz("\nendstream\nendobj\n");
+  const icerik = "q "+ptW+" 0 0 "+ptH+" 0 0 cm /Im0 Do Q";
+  obj("5 0 obj\n<< /Length "+icerik.length+" >>\nstream\n"+icerik+"\nendstream\nendobj\n");
+  const xref=boy;
+  yaz("xref\n0 6\n0000000000 65535 f \n");
+  for(const o of ofsetler) yaz(String(o).padStart(10,"0")+" 00000 n \n");
+  yaz("trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n"+xref+"\n%%EOF\n");
+  return new Blob(parcalar,{ type:"application/pdf" });
+}
 
 /* ---------- yardımcı ---------- */
 function mesaj(t, tip){ const m=$("msg"); m.textContent=t; m.className="msg "+(tip||""); if(tip) setTimeout(()=>m.className="msg",4000); }
