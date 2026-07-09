@@ -12,7 +12,7 @@ const QRCode = require("qrcode");
 const SABLON_DIZIN = path.join(__dirname, "sablonlar");
 
 // Her sablonun dosyasi ve dinamik alanlarin yerlesimi (viewBox birimi).
-// Sablonlar dik (portre) DL formatinda; viewBox 0 0 401 817.
+// renkli: dik DL (viewBox 0 0 401 817), krem: A5 (viewBox 0 0 560 794).
 // qr    : QR'in sol-ust kosesi ve kenar uzunlugu (sessiz alani beyaz kart saglar)
 // logo  : logonun (opsiyonel) sigdirilecegi kutu, oran korunur; yoksa bos kalir
 // ad    : isletme adi; kendi ayrilmis satirinda (logodan bagimsiz).
@@ -20,23 +20,23 @@ const SABLON_DIZIN = path.join(__dirname, "sablonlar");
 const SABLONLAR = {
   renkli: {
     dosya: "stant-renkli.svg",
-    qr: { x: 132.28, y: 359.06, mm: 136 },
-    logo: { x: 140, y: 70, w: 120, h: 46 },
+    qr: { x: 135.8, y: 505.43, mm: 136.06 },
+    logo: { x: 136, y: 22, w: 128, h: 46 },
     ad: {
-      x: 200.3, hiza: "middle", genislik: 230, renk: "#FFFFFF",
-      tek: { y: 178, tavan: 34 },
-      cift: { y1: 161, y2: 182, tavan: 21 },
+      x: 200.3, hiza: "middle", genislik: 320, renk: "#FFFFFF",
+      tek: { y: 132.9, tavan: 36 },
+      cift: { y1: 116, y2: 139, tavan: 21 },
     },
   },
   // krem: A5 (viewBox 0 0 560 794). Dinamik alanlar: logo kutusu, ad, QR.
   krem: {
     dosya: "stant-krem.svg",
-    qr: { x: 210.35, y: 316.94, mm: 135 },
-    logo: { x: 222, y: 76, w: 116, h: 43 },
+    qr: { x: 211, y: 497, mm: 136.06 },
+    logo: { x: 218, y: 25, w: 124, h: 44 },
     ad: {
-      x: 280, hiza: "middle", genislik: 290, renk: "#1B1B1F",
-      tek: { y: 165, tavan: 34 },
-      cift: { y1: 150, y2: 174, tavan: 22 },
+      x: 279.7, hiza: "middle", genislik: 420, renk: "#1B1B1F",
+      tek: { y: 114.5, tavan: 34 },
+      cift: { y1: 99, y2: 121, tavan: 20 },
     },
   },
 };

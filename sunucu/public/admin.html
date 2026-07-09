@@ -65,6 +65,11 @@
   td a:hover{text-decoration:underline}
   .rowbtns{display:flex;gap:6px;justify-content:flex-end}
   .empty{color:var(--muted);text-align:center;padding:26px 0}
+  .liste-bas{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+  .liste-bas h3{margin:0}
+  .arama-kutu{position:relative;flex:1;min-width:200px;max-width:300px}
+  .arama-kutu svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;fill:var(--muted);pointer-events:none}
+  .arama-kutu input{padding-left:34px}
 
   /* MODAL */
   .overlay{position:fixed;inset:0;background:rgba(2,6,23,.55);backdrop-filter:blur(2px);
@@ -137,7 +142,13 @@
 
   <!-- liste -->
   <div class="card">
-    <h3>Kayıtlı işletmeler (<span id="sayi">0</span>)</h3>
+    <div class="liste-bas">
+      <h3>Kayıtlı işletmeler (<span id="sayi">0</span>)</h3>
+      <div class="arama-kutu">
+        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5Zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14Z"/></svg>
+        <input id="arama" type="search" placeholder="İşletme veya slug ara…" oninput="tabloyuCiz()" />
+      </div>
+    </div>
     <table>
       <thead><tr><th>İşletme</th><th>Slug</th><th>Tam URL</th><th>Test</th><th>İndir</th><th></th></tr></thead>
       <tbody id="liste"></tbody>
@@ -216,10 +227,21 @@ async function listele(){
   try{
     const d = await api("/api/restoranlar");
     SON_LISTE = d.restoranlar;
-    const tb = $("liste"); tb.innerHTML="";
-    $("sayi").textContent = d.restoranlar.length;
-    if(!d.restoranlar.length){ tb.innerHTML='<tr><td colspan="6" class="empty">Henüz kayıt yok. Yukarıdan ekle.</td></tr>'; return; }
-    for(const r of d.restoranlar){
+    tabloyuCiz();
+  }catch(e){ if(e.message!=="401") mesaj(e.message,"err"); }
+}
+// Türkçe karakterlere duyarlı, büyük/küçük harf bağımsız karşılaştırma için normalize et
+function normalize(s){ return String(s||"").toLocaleLowerCase("tr"); }
+function tabloyuCiz(){
+  const q = normalize($("arama").value.trim());
+  const kayitlar = q
+    ? SON_LISTE.filter(r => normalize(r.isletme).includes(q) || normalize(r.slug).includes(q))
+    : SON_LISTE;
+  const tb = $("liste"); tb.innerHTML="";
+  $("sayi").textContent = q ? (kayitlar.length + " / " + SON_LISTE.length) : SON_LISTE.length;
+  if(!SON_LISTE.length){ tb.innerHTML='<tr><td colspan="6" class="empty">Henüz kayıt yok. Yukarıdan ekle.</td></tr>'; return; }
+  if(!kayitlar.length){ tb.innerHTML='<tr><td colspan="6" class="empty">Aramayla eşleşen kayıt yok.</td></tr>'; return; }
+  for(const r of kayitlar){
       const tamUrl = location.origin + "/r/" + r.slug;
       const tr=document.createElement("tr");
       tr.innerHTML=`
@@ -242,8 +264,7 @@ async function listele(){
           <button class="btn-danger btn-sm" onclick="silSor('${esc(r.slug)}','${esc(r.isletme||r.slug)}')">Sil</button>
         </div></td>`;
       tb.appendChild(tr);
-    }
-  }catch(e){ if(e.message!=="401") mesaj(e.message,"err"); }
+  }
 }
 
 /* ---------- Ekle / güncelle ---------- */
